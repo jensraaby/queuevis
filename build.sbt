@@ -1,3 +1,6 @@
+enablePlugins(SbtNativePackager)
+enablePlugins(JavaServerAppPackaging)
+
 lazy val commonSettings = Seq(
   organization := "com.jensraaby",
   version := "dev",
@@ -11,19 +14,24 @@ lazy val commonSettings = Seq(
   )
 )
 
-lazy val root = (project in file("."))
-  .settings(commonSettings: _*)
-  .settings(
-    name := "queuevis",
-    libraryDependencies ++= dependencies
-  )
-
-
 lazy val versions = new {
   val akka = "2.4.1"
   val aws = "1.10.48"
 }
 
-val dependencies = Seq("com.typesafe.akka" %% "akka-actor" % versions.akka,
-  "com.amazonaws" % "aws-java-sdk-sqs" % versions.aws)
+val dependencies = Seq(
+  "com.typesafe.akka" %% "akka-actor" % versions.akka,
+  "com.amazonaws" % "aws-java-sdk-sqs" % versions.aws
+)
+
+lazy val queueVis = (project in file("."))
+  .settings(commonSettings: _*)
+  .settings(
+    name := "queuevis",
+    libraryDependencies ++= dependencies,
+    mainClass in Compile := Some("com.jensraaby.queuevis.QueueVisMain")
+
+  )
+
+
 
