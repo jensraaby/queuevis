@@ -17,11 +17,13 @@ lazy val commonSettings = Seq(
 lazy val versions = new {
   val akka = "2.4.1"
   val aws = "1.10.48"
+  val elasticmq = "0.8.12"
 }
 
 val dependencies = Seq(
   "com.typesafe.akka" %% "akka-actor" % versions.akka,
-  "com.amazonaws" % "aws-java-sdk-sqs" % versions.aws
+  "com.amazonaws" % "aws-java-sdk-sqs" % versions.aws,
+  "org.elasticmq" %% "elasticmq-rest-sqs" % versions.elasticmq
 )
 
 lazy val queueVis = (project in file("."))
