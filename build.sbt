@@ -17,13 +17,16 @@ lazy val commonSettings = Seq(
 lazy val versions = new {
   val akka = "2.4.1"
   val aws = "1.10.48"
-  val elasticmq = "0.8.12"
+  val scalatest = "2.2.5"
+  val typeSafeConfig = "1.3.0"
 }
 
 val dependencies = Seq(
-  "com.typesafe.akka" %% "akka-actor" % versions.akka,
   "com.amazonaws" % "aws-java-sdk-sqs" % versions.aws,
-  "org.elasticmq" %% "elasticmq-rest-sqs" % versions.elasticmq
+  "com.typesafe.akka" %% "akka-actor" % versions.akka,
+  "com.typesafe.akka" %% "akka-testkit" % versions.akka % "test",
+  "org.scalatest" %%  "scalatest"   % versions.scalatest % "test",
+  "com.typesafe" % "config" % versions.typeSafeConfig
 )
 
 lazy val queueVis = (project in file("."))
@@ -32,7 +35,6 @@ lazy val queueVis = (project in file("."))
     name := "queuevis",
     libraryDependencies ++= dependencies,
     mainClass in Compile := Some("com.jensraaby.queuevis.QueueVisMain")
-
   )
 
 

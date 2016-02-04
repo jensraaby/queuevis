@@ -1,34 +1,55 @@
 package com.jensraaby.queuevis
 
 import akka.actor.{ActorSystem, Props}
-import com.amazonaws.services.sqs.model.ReceiveMessageResult
-import com.jensraaby.queuevis.sqs.{Write, SqsQueue, Poll}
-import org.elasticmq.rest.sqs.SQSRestServerBuilder
+import akka.pattern.ask
+import akka.util.Timeout
+import com.amazonaws.services.sqs.AmazonSQSAsyncClient
+import com.amazonaws.services.sqs.model.{ReceiveMessageResult, Message, SendMessageResult}
+import com.jensraaby.queuevis.aws.SqsQueue
+import com.jensraaby.queuevis.config.ConfigurationProvider
 
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{Future, Await, ExecutionContext}
 import scala.concurrent.duration._
 
-class QueueVis {
-  implicit val ec = ExecutionContext.global
-  implicit val timeout: akka.util.Timeout = 20.seconds
-  val system = ActorSystem("quevis-system")
+class QueueVis(queueUrl: String)(implicit ec: ExecutionContext, timeout: Timeout) {
+  implicit val sqsClient = new AmazonSQSAsyncClient()
+  val system = ActorSystem("queueVis-system")
+  val queue = system.actorOf(SqsQueue(queueUrl))
 
-  val elasticMQserver = SQSRestServerBuilder.withActorSystem(system).withPort(9325).withInterface("localhost").start()
-
-  val queue = system.actorOf(Props(new SqsQueue("http://localhost:9325/queue1")))
-}
-
-object QueueVisMain extends QueueVis with App {
-
-  import akka.pattern.ask
-
-  val postSomething = queue ! Write("hello world")
-
-  val results = (queue ? Poll(2, 10)).mapTo[ReceiveMessageResult]
-  results.map { r =>
-    println(r.getMessages)
+  override def finalize(): Unit = {
+    println("Shutting down SQS client")
+    sqsClient.shutdown()
   }
 
-  Await.result(results, 5.minutes)
-  elasticMQserver.stopAndWait()
+  def postMessage(messageBody: String): Future[String] = {
+    (queue ? SqsQueue.Write(messageBody))
+      .mapTo[SendMessageResult]
+      .map(_.getMessageId)
+  }
+
+  def getMessages(maxMessages: Int, maxWait: FiniteDuration): Future[List[Message]] = {
+    (queue ? SqsQueue.Poll(maxMessages, maxWait.toSeconds.toInt))
+      .mapTo[List[Message]]
+  }
+
+
+}
+
+object QueueVisMain extends App {
+  implicit val timeout: Timeout = 20.seconds
+  implicit val ec = ExecutionContext.global
+  val config = implicitly[ConfigurationProvider]
+  val queueVis = new QueueVis(config.queueUrl)
+
+//  val postSomething = queueVis.postMessage("hello from the main app")
+//  val messageId = Await.result(postSomething, timeout.duration)
+//  println("message id: " + messageId)
+
+
+  val messages = Await.result(queueVis.getMessages(10, 10.second), 20.seconds)
+  println("got messages: " + messages)
+
+  queueVis.finalize()
+  queueVis.system.terminate()
+  println("all done")
 }
